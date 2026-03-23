@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Background Remover</title>
+    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@latest/dist/bundle.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        #upload-btn { margin: 20px 0; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #canvas-container { margin-top: 20px; }
+        canvas { max-width: 100%; border-radius: 10px; }
+        .loading { display: none; color: #555; font-style: italic; }
+        #download-link { display: none; margin-top: 15px; color: #28a745; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Background Remover</h1>
+    <p>Upload an image to remove background instantly</p>
+    
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <p class="loading" id="status">Processing... Please wait (this may take a few seconds)</p>
+    
+    <div id="canvas-container">
+        <img id="outputImage" style="max-width: 100%; display: none;">
+    </div>
+
+    <a id="download-link" download="background-removed.png">Download Result</a>
+</div>
+
+<script>
+    const imageInput = document.getElementById('imageInput');
+    const status = document.getElementById('status');
+    const outputImage = document.getElementById('outputImage');
+    const downloadLink = document.getElementById('download-link');
+
+    imageInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        status.style.display = 'block';
+        outputImage.style.display = 'none';
+        downloadLink.style.display = 'none';
+
+        try {
+            // Processing the image
+            const blob = await imglyConfig.removeBackground(file);
+            
+            // Creating a URL for the result
+            const url = URL.createObjectURL(blob);
+            
+            outputImage.src = url;
+            outputImage.style.display = 'block';
+            
+            downloadLink.href = url;
+            downloadLink.style.display = 'inline-block';
+            
+            status.style.display = 'none';
+        } catch (error) {
+            console.error(error);
+            alert("Error removing background. Check console.");
+            status.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
