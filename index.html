@@ -3,35 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All-in-One Image Editor</title>
+    <title>AI Image Editor Pro - Vaibhav</title>
     <style>
-        :root {
-            --primary: #6366f1;
-            --bg: #f8fafc;
+        :root { --primary: #6366f1; --bg: #f1f5f9; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
+        .container { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 500px; text-align: center; margin-top: 20px; }
+        
+        .canvas-area { 
+            margin: 20px 0; 
+            border: 2px dashed #cbd5e1; 
+            border-radius: 12px; 
+            background: #fafafa;
+            min-height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 800px; text-align: center; }
-        .canvas-area { margin: 20px 0; border: 2px dashed #cbd5e1; border-radius: 10px; overflow: hidden; position: relative; }
-        canvas { max-width: 100%; height: auto; }
-        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 20px; }
-        .btn { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn:hover { opacity: 0.8; }
-        .btn-bg { background: #ef4444; } /* Red for BG Remove */
-        input[type="range"] { width: 100%; }
-        label { font-size: 12px; font-weight: bold; display: block; margin-top: 5px; }
+        canvas { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .full-width { grid-column: span 2; }
+        
+        input[type="range"] { width: 100%; accent-color: var(--primary); }
+        input[type="text"] { width: 90%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; }
+        
+        .btn { border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.3s; color: white; }
+        .btn-bg { background: #ff4757; }
+        .btn-blue { background: var(--primary); }
+        .btn-green { background: #2ed573; }
+        .btn:active { transform: scale(0.95); }
+        
+        label { font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>AI Image Editor Pro</h2>
-    <p>Upload image to edit colors or remove background</p>
+    <h2 style="margin-bottom: 5px;">AI Image Editor Pro</h2>
+    <p style="font-size: 13px; color: #666;">Edit, Remove BG & Add Text</p>
     
-    <input type="file" id="upload" accept="image/*">
+    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
     <div class="canvas-area">
         <canvas id="canvas"></canvas>
     </div>
+
+    <input type="text" id="userText" placeholder="Enter text to add on image...">
 
     <div class="controls">
         <div>
@@ -39,17 +57,14 @@
             <input type="range" id="brightness" min="0" max="200" value="100">
         </div>
         <div>
-            <label>Saturation</label>
-            <input type="range" id="saturation" min="0" max="200" value="100">
-        </div>
-        <div>
             <label>Contrast</label>
             <input type="range" id="contrast" min="0" max="200" value="100">
         </div>
 
-        <button class="btn btn-bg" onclick="removeBackground()">Remove Background (AI)</button>
-        <button class="btn" onclick="applyGrayscale()">Grayscale</button>
-        <button class="btn" onclick="downloadImage()">Download PNG</button>
+        <button class="btn btn-bg full-width" onclick="removeBackground()">✨ Remove Background (AI)</button>
+        <button class="btn btn-blue" onclick="addTextToCanvas()">Add Text</button>
+        <button class="btn btn-blue" onclick="applyGrayscale()">B&W Filter</button>
+        <button class="btn btn-green full-width" onclick="downloadImage()">⬇️ Download Result</button>
     </div>
 </div>
 
@@ -58,17 +73,18 @@
     const ctx = canvas.getContext('2d');
     const upload = document.getElementById('upload');
     const brightness = document.getElementById('brightness');
-    const saturation = document.getElementById('saturation');
     const contrast = document.getElementById('contrast');
+    const userText = document.getElementById('userText');
     
     let originalImage = null;
+    let apiKey = "ARDzmG85VhtFY1MbAW6X7ZYD"; // Aapki key lagadi hai
 
-    // 1. Upload & Draw Image
     upload.addEventListener('change', (e) => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
             img.onload = () => {
+                // Resize logic: Canvas ko image ke size ka banana
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
@@ -79,40 +95,45 @@
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 2. Apply Filters (Brightness, Saturation, etc.)
     function applyFilters() {
         if (!originalImage) return;
-        ctx.filter = `brightness(${brightness.value}%) saturate(${saturation.value}%) contrast(${contrast.value}%)`;
+        ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%)`;
         ctx.drawImage(originalImage, 0, 0);
     }
 
-    [brightness, saturation, contrast].forEach(input => {
-        input.addEventListener('input', applyFilters);
-    });
+    [brightness, contrast].forEach(input => input.addEventListener('input', applyFilters));
 
-    // 3. Simple Grayscale Filter
     function applyGrayscale() {
+        if (!originalImage) return;
         ctx.filter = 'grayscale(100%)';
         ctx.drawImage(originalImage, 0, 0);
     }
 
-    // 4. Background Removal (Using a Free API)
+    function addTextToCanvas() {
+        if (!originalImage) return;
+        const text = userText.value;
+        ctx.font = "bold 50px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "black";
+        ctx.shadowBlur = 10;
+        ctx.fillText(text, canvas.width / 2, canvas.height - 50);
+        ctx.shadowBlur = 0; 
+    }
+
     async function removeBackground() {
-        if (!originalImage) return alert("Pehle photo select karein!");
+        if (!upload.files[0]) return alert("Please select a file first!");
         
-        alert("Connecting to AI... Please wait.");
+        alert("Processing... AI background remove kar raha hai.");
         
-        const file = upload.files[0];
         const formData = new FormData();
-        formData.append('image_file', file);
+        formData.append('image_file', upload.files[0]);
         formData.append('size', 'auto');
 
-        // NOTE: Aapko 'remove.bg' ya 'Photoroom' ki API key use karni hogi.
-        // Ye example remove.bg API ke liye hai:
         try {
             const response = await fetch('https://api.remove.bg/v1.0/removebg', {
                 method: 'POST',
-                headers: { 'X-Api-Key': 'ARDzmG85VhtFY1MbAW6X7ZYD' }, // Yaha apni API key dalein
+                headers: { 'X-Api-Key': apiKey },
                 body: formData
             });
 
@@ -121,24 +142,26 @@
                 const url = URL.createObjectURL(blob);
                 const img = new Image();
                 img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0);
-                    originalImage = img;
+                    originalImage = img; // Update original to the new BG-less image
+                    alert("Done!");
                 };
                 img.src = url;
             } else {
-                alert("API Error: Key check karein ya free limit khatam ho sakti hai.");
+                alert("Error: API limit khatam ya key galat hai.");
             }
         } catch (err) {
             console.error(err);
         }
     }
 
-    // 5. Download Function
     function downloadImage() {
         const link = document.createElement('a');
-        link.download = 'edited-image.png';
-        link.href = canvas.toDataURL();
+        link.download = 'vaibhav_editor_output.png';
+        link.href = canvas.toDataURL("image/png");
         link.click();
     }
 </script>
