@@ -3,38 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Vision BG Remover</title>
+    <title>AI Vision Remover</title>
     <style>
-        body { font-family: sans-serif; background: #0a0a0a; color: white; text-align: center; padding: 20px; }
-        .container { max-width: 400px; margin: auto; background: #1a1a1a; padding: 25px; border-radius: 20px; border: 1px solid #333; }
-        .upload-area { border: 2px dashed #444; padding: 30px; border-radius: 15px; cursor: pointer; margin-bottom: 20px; }
-        #btn { background: #3d5afe; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        #loader { display: none; margin: 15px 0; color: #3d5afe; font-weight: bold; }
-        #resultImg { width: 100%; border-radius: 10px; display: none; margin-top: 20px; border: 1px solid #444; background: #222; }
-        .download { display: none; margin-top: 15px; color: #00ff88; text-decoration: none; font-weight: bold; border: 1px solid #00ff88; padding: 10px; border-radius: 8px; }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: white; text-align: center; padding: 20px; }
+        .container { max-width: 400px; margin: auto; background: #161616; padding: 30px; border-radius: 24px; border: 1px solid #262626; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        .upload-area { border: 2px dashed #333; padding: 40px; border-radius: 18px; cursor: pointer; margin-bottom: 20px; transition: 0.3s; }
+        .upload-area:hover { border-color: #3d5afe; background: #1a1a1a; }
+        #btn { background: #3d5afe; color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        #btn:disabled { background: #222; color: #555; cursor: not-allowed; }
+        #loader { display: none; margin: 20px 0; color: #3d5afe; font-weight: bold; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        #resultImg { width: 100%; border-radius: 12px; display: none; margin-top: 20px; border: 1px solid #333; background: #000; }
+        .download { display: none; margin-top: 15px; color: #00ff88; text-decoration: none; font-weight: bold; border: 1px solid #00ff88; padding: 12px; border-radius: 10px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="color: #3d5afe;">AI Vision Remover</h2>
+    <h2 style="color: #3d5afe; margin-bottom: 5px;">AI Vision Remover</h2>
+    <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Powered by Cloudinary AI</p>
     
-    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <span id="label">Select Image</span>
+    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <span id="label">Tap to select photo</span>
         <input type="file" id="fileInput" accept="image/*" style="display:none">
     </div>
 
     <button id="btn">REMOVE BACKGROUND</button>
-    <div id="loader">Processing Image... 🤖</div>
+    <div id="loader">AI is thinking... 🧠✨</div>
 
-    <img id="resultImg">
-    <a id="downloadBtn" class="download">DOWNLOAD CLEAN PNG</a>
+    <img id="resultImg" alt="Result">
+    <a id="downloadBtn" class="download" target="_blank">DOWNLOAD CLEAN PNG</a>
 </div>
 
 <script>
-    // ✅ Tere screenshot se details:
     const CLOUD_NAME = "dunkfdbd9"; 
-    const UPLOAD_PRESET = "my_preset"; // Jo preset tune 'Unsigned' banaya hai
+    const UPLOAD_PRESET = "my_preset"; // Make sure it's 'Unsigned' in Cloudinary settings
 
     const fileInput = document.getElementById('fileInput');
     const btn = document.getElementById('btn');
@@ -46,17 +49,19 @@
 
     btn.onclick = async () => {
         const file = fileInput.files[0];
-        if (!file) return alert("Select photo!");
+        if (!file) return alert("Photo select karo!");
 
         loader.style.display = "block";
         btn.disabled = true;
+        resultImg.style.display = "none";
+        downloadBtn.style.display = "none";
 
         const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", UPLOAD_PRESET);
 
         try {
-            // 1. Upload to Cloudinary
+            // 1. Upload
             const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
                 method: "POST",
                 body: formData
@@ -65,27 +70,34 @@
             const data = await res.json();
             
             if (data.public_id) {
-                // 2. AI Background Removal URL
-                // Note: v${data.version} use karna zaruri hai
+                // 2. Build URL with AI Effect
                 const cleanUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/e_background_removal/v${data.version}/${data.public_id}.png`;
 
-                // Image load check
-                const img = new Image();
-                img.src = cleanUrl;
-                img.onload = () => {
-                    resultImg.src = cleanUrl;
-                    resultImg.style.display = "block";
-                    downloadBtn.href = cleanUrl;
-                    downloadBtn.style.display = "inline-block";
-                    loader.style.display = "none";
-                    btn.disabled = false;
+                // Function to check if AI is done
+                const checkImage = () => {
+                    const testImg = new Image();
+                    testImg.src = cleanUrl;
+                    testImg.onload = () => {
+                        resultImg.src = cleanUrl;
+                        resultImg.style.display = "block";
+                        downloadBtn.href = cleanUrl;
+                        downloadBtn.style.display = "block";
+                        loader.style.display = "none";
+                        btn.disabled = false;
+                    };
+                    testImg.onerror = () => {
+                        // AI taking time, retry in 2 seconds
+                        setTimeout(checkImage, 2000);
+                    };
                 };
+                checkImage();
             } else {
-                alert("Upload Error! Settings mein 'Unsigned Preset' check karein.");
+                alert("Upload Fail! Check your 'my_preset' settings.");
+                loader.style.display = "none";
+                btn.disabled = false;
             }
         } catch (err) {
             alert("Network Error!");
-        } finally {
             loader.style.display = "none";
             btn.disabled = false;
         }
